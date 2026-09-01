@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STYLE KHUN - E-Commerce App</title>
+    <style>
+        :root {
+            --primary: #2C3E50;
+            --accent: #E74C3C;
+            --bg-light: #F8F9FA;
+            --surface: #FFFFFF;
+            --text-main: #333333;
+            --text-muted: #7F8C8D;
+            --border-color: #E2E8F0;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sukhumvit Set', 'Kanit', -apple-system, sans-serif; }
+        body { background-color: #E2E8F0; display: flex; justify-content: center; min-height: 100vh; }
+
+        .app-container {
+            width: 100%;
+            max-width: 430px;
+            height: 100vh;
+            background: var(--bg-light);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .app-header {
+            background: var(--surface);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            z-index: 10;
+        }
+        .brand-logo { font-size: 18px; font-weight: 800; color: var(--primary); letter-spacing: 1px; }
+        .search-bar {
+            flex: 1; margin: 0 10px; background: #EDF2F7; border-radius: 20px;
+            padding: 6px 12px; display: flex; align-items: center;
+        }
+        .search-bar input { border: none; background: transparent; outline: none; width: 100%; font-size: 13px; margin-left: 6px; }
+
+        /* Main Content */
+        .content-area { flex: 1; overflow-y: auto; padding-bottom: 70px; }
+        .page { display: none; padding: 16px; }
+        .page.active { display: block; }
+
+        /* Navigation */
+        .bottom-nav {
+            position: absolute; bottom: 0; width: 100%; background: var(--surface);
+            display: flex; justify-content: space-around; padding: 8px 0;
+            border-top: 1px solid var(--border-color); z-index: 100;
+        }
+        .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 10px; color: var(--text-muted); cursor: pointer; }
+        .nav-item.active { color: var(--accent); font-weight: bold; }
+        .nav-icon { font-size: 18px; margin-bottom: 2px; }
+
+        /* Cards & Buttons */
+        .card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; box-shadow: var(--shadow); }
+        .btn-primary { background: var(--primary); color: #fff; border: none; width: 100%; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-accent { background: var(--accent); color: #fff; border: none; width: 100%; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+
+        /* Grid System */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .product-card { background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); position: relative; cursor: pointer; }
+        .product-img { width: 100%; height: 140px; object-fit: cover; }
+        .product-info { padding: 8px; }
+        .product-title { font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+        .product-price { color: var(--accent); font-weight: bold; font-size: 14px; margin-top: 4px; }
+
+        /* Forms */
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 13px;
+        }
+
+        /* Timeline / Order Tracking */
+        .timeline { position: relative; padding-left: 20px; border-left: 2px solid var(--border-color); margin: 10px 0; }
+        .timeline-item { position: relative; margin-bottom: 15px; font-size: 12px; }
+        .timeline-item::before {
+            content: ''; position: absolute; left: -26px; top: 2px; width: 10px; height: 10px;
+            border-radius: 50%; background: var(--border-color);
+        }
+        .timeline-item.active::before { background: var(--accent); }
+
+        /* Chat Drawer */
+        .chat-widget {
+            position: absolute; bottom: 60px; right: 10px; z-index: 200; width: 300px;
+            height: 380px; background: var(--surface); border-radius: var(--radius);
+            box-shadow: var(--shadow); display: none; flex-direction: column; border: 1px solid var(--border-color);
+        }
+        .chat-header { background: var(--primary); color: #fff; padding: 10px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; }
+        .chat-body { flex: 1; padding: 10px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-bubble { padding: 6px 10px; border-radius: 8px; max-width: 80%; width: fit-content; }
+        .chat-bubble.user { background: #E2E8F0; align-self: flex-end; }
+        .chat-bubble.store { background: var(--primary); color: #fff; align-self: flex-start; }
+        .chat-footer { padding: 8px; border-top: 1px solid var(--border-color); display: flex; gap: 4px; }
+
+        /* Floating Buttons */
+        .chat-toggle-btn {
+            position: absolute; bottom: 65px; right: 15px; width: 45px; height: 45px;
+            background: var(--accent); color: #fff; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 20px; cursor: pointer;
+            box-shadow: var(--shadow); z-index: 150;
+        }
+
+        /* Admin Tag */
+        .badge { background: #E2E8F0; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .badge-success { background: #DEF7EC; color: #03543F; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="brand-logo" onclick="navigate('home')">STYLE KHUN</div>
+        <div class="search-bar">
+            🔍 <input type="text" placeholder="ค้นหาสินค้า..." onkeyup="handleSearch(event)">
+        </div>
+        <span onclick="toggleMode()" style="font-size: 11px; cursor: pointer;" id="modeBtn">👤 ผู้ใช้</span>
+    </header>
+
+    <!-- Main Dynamic Content -->
+    <div class="content-area">
+        
+        <!-- PAGE 1: HOME -->
+        <div id="page-home" class="page active">
+            <div class="card" style="background: linear-gradient(135deg, #2C3E50, #4CA1AF); color:#fff;">
+                <h3>NEW COLLECTION</h3>
+                <p style="font-size: 12px; margin-top:4px;">ลดสูงสุด 15% ใช้โค้ด: STYLE10</p>
+            </div>
+            <h4 style="margin-bottom: 10px;">สินค้าแนะนำ</h4>
+            <div class="grid-2" id="homeGrid"></div>
+        </div>
+
+        <!-- PAGE 2: PRODUCT DETAIL & REVIEWS -->
+        <div id="page-detail" class="page">
+            <button onclick="goBack()" style="border:none; background:none; cursor:pointer; margin-bottom:10px;">← ย้อนกลับ</button>
+            <img id="detailImg" class="product-img" style="height:200px; border-radius: 8px;">
+            <h3 id="detailTitle" style="margin-top:10px;"></h3>
+            <p id="detailPrice" class="product-price"></p>
+            <p id="detailDesc" style="font-size:12px; color: var(--text-muted); margin: 8px 0;"></p>
+            
+            <button class="btn-accent" onclick="addToCart()" style="margin-bottom:15px;">🛒 เพิ่มลงตะกร้า</button>
+
+            <!-- Reviews Section -->
+            <div class="card">
+                <h4>ความเห็นจากผู้ซื้อ</h4>
+                <div id="reviewList" style="margin: 10px 0; font-size: 12px;"></div>
+                <hr style="margin: 10px 0; border: none; border-top: 1px solid var(--border-color);">
+                <div class="form-group">
+                    <label>ให้คะแนนสินค้า</label>
+                    <select id="reviewRating">
+                        <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+                        <option value="4">⭐⭐⭐⭐ (4/5)</option>
+                        <option value="3">⭐⭐⭐ (3/5)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="reviewComment" placeholder="เขียนรีวิวสินค้าที่นี่...">
+                </div>
+                <button class="btn-primary" onclick="addReview()">ส่งรีวิว</button>
+            </div>
+        </div>
+
+        <!-- PAGE 3: CART & CHECKOUT -->
+        <div id="page-cart" class="page">
+            <h4>ตะกร้าสินค้า</h4>
+            <div id="cartContainer" style="margin: 10px 0;"></div>
+            
+            <!-- Delivery Address Section -->
+            <div class="card">
+                <h4>📍 ที่อยู่จัดส่ง</h4>
+                <div id="selectedAddress" style="font-size: 12px; color: var(--text-muted); margin: 6px 0;">ยังไม่มีที่อยู่จัดส่ง</div>
+                <button onclick="navigate('address')" style="font-size: 11px; border:none; background:none; color:var(--accent); cursor:pointer;">+ จัดการ/เพิ่มที่อยู่</button>
+            </div>
+
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; font-size:14px; font-weight:bold;">
+                    <span>รวมทั้งหมด:</span>
+                    <span id="cartTotal">฿0</span>
+                </div>
+                <button class="btn-accent" onclick="checkout()" style="margin-top:10px;">ยืนยันสั่งซื้อ</button>
+            </div>
+        </div>
+
+        <!-- PAGE 4: ADDRESS MANAGEMENT -->
+        <div id="page-address" class="page">
+            <button onclick="goBack()" style="border:none; background:none; cursor:pointer; margin-bottom:10px;">← ย้อนกลับ</button>
+            <h4>จัดการที่อยู่จัดส่ง</h4>
+            <div class="card" style="margin-top:10px;">
+                <div class="form-group">
+                    <label>ชื่อ-นามสกุล ผู้รับ</label>
+                    <input type="text" id="addrName">
+                </div>
+                <div class="form-group">
+                    <label>เบอร์โทรศัพท์</label>
+                    <input type="text" id="addrPhone">
+                </div>
+                <div class="form-group">
+                    <label>ที่อยู่โดยละเอียด</label>
+                    <textarea id="addrDetail" rows="2"></textarea>
+                </div>
+                <button class="btn-primary" onclick="saveAddress()">บันทึกที่อยู่</button>
+            </div>
+            <div id="addressList"></div>
+        </div>
+
+        <!-- PAGE 5: ORDER TRACKING -->
+        <div id="page-orders" class="page">
+            <h4>ติดตามคำสั่งซื้อ</h4>
+            <div id="ordersContainer" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- PAGE 6: ADMIN DASHBOARD -->
+        <div id="page-admin" class="page">
+            <h4>🛠️ ระบบจัดการหลังบ้าน (Admin)</h4>
+            
+            <div class="card" style="margin-top:10px;">
+                <h5>+ เพิ่มสินค้าใหม่</h5>
+                <div class="form-group" style="margin-top:6px;">
+                    <input type="text" id="adminPName" placeholder="ชื่อสินค้า">
+                </div>
+                <div class="form-group">
+                    <input type="number" id="adminPPrice" placeholder="ราคา (บาท)">
+                </div>
+                <div class="form-group">
+                    <input type="text" id="adminPImg" placeholder="URL รูปภาพ">
+                </div>
+                <button class="btn-primary" onclick="adminAddProduct()">บันทึกสินค้า</button>
+            </div>
+
+            <div class="card">
+                <h5>📦 รายการออเดอร์ทั้งหมด</h5>
+                <div id="adminOrderList" style="margin-top:10px;"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Live Chat Widget -->
+    <div class="chat-toggle-btn" onclick="toggleChat()">💬</div>
+    <div class="chat-widget" id="chatWidget">
+        <div class="chat-header">
+            <span>แชทกับร้านค้า</span>
+            <span style="cursor:pointer;" onclick="toggleChat()">✕</span>
+        </div>
+        <div class="chat-body" id="chatBody">
+            <div class="chat-bubble store">สวัสดีครับ มีอะไรให้ STYLE KHUN ช่วยดูแลครับ?</div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" id="chatInput" style="flex:1; padding:4px 8px; border-radius:4px; border:1px solid var(--border-color); font-size:12px;" placeholder="พิมพ์ข้อความ...">
+            <button class="btn-primary" style="width:auto; padding:4px 10px; font-size:12px;" onclick="sendChat()">ส่ง</button>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" id="nav-home" onclick="navigate('home')">
+            <span class="nav-icon">🏠</span><span>หน้าแรก</span>
+        </div>
+        <div class="nav-item" id="nav-orders" onclick="navigate('orders')">
+            <span class="nav-icon">📦</span><span>ออเดอร์</span>
+        </div>
+        <div class="nav-item" id="nav-cart" onclick="navigate('cart')">
+            <span class="nav-icon">🛒</span><span>ตะกร้า</span>
+        </div>
+    </nav>
+</div>
+
+<script>
+    // State Management
+    let isAdmin = false;
+    let products = [
+        { id: 1, name: 'เสื้อเชิ้ต Minimal ลินิน', price: 590, img: 'https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=300', desc: 'ผ้าระบายอากาศได้ดี เหมาะกับหน้าร้อน' },
+        { id: 2, name: 'กางเกงสแล็ค Earth Tone', price: 790, img: 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?w=300', desc: 'ทรงเอวสูง ผ้าพรีเมียม ไม่ยับง่าย' }
+    ];
+    let cart = [];
+    let addresses = [];
+    let selectedAddrIndex = -1;
+    let orders = [];
+    let reviews = {
+        1: [{ rating: 5, comment: 'ผ้าดีมากครับ ใส่สบายมาก' }],
+        2: [{ rating: 4, comment: 'ทรงสวย ส่งไวดีครับ' }]
+    };
+    let activeProduct = null;
+
+    // Initialization
+    window.onload = () => {
+        renderProducts();
+        renderOrders();
+    };
+
+    // Router Function
+    function navigate(pageId) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        
+        const target = document.getElementById(`page-${pageId}`);
+        if(target) target.classList.add('active');
+        
+        const navTarget = document.getElementById(`nav-${pageId}`);
+        if(navTarget) navTarget.classList.add('active');
+
+        if(pageId === 'cart') renderCart();
+        if(pageId === 'orders') renderOrders();
+        if(pageId === 'admin') renderAdminOrders();
+    }
+
+    function goBack() { navigate('home'); }
+
+    // Toggle User/Admin Mode
+    function toggleMode() {
+        isAdmin = !isAdmin;
+        document.getElementById('modeBtn').innerText = isAdmin ? '🛠️ แอดมิน' : '👤 ผู้ใช้';
+        if(isAdmin) {
+            navigate('admin');
+        } else {
+            navigate('home');
+        }
+    }
+
+    // Product Rendering
+    function renderProducts(list = products) {
+        const grid = document.getElementById('homeGrid');
+        grid.innerHTML = list.map(p => `
+            <div class="product-card" onclick="openDetail(${p.id})">
+                <img src="${p.img}" class="product-img">
+                <div class="product-info">
+                    <div class="product-title">${p.name}</div>
+                    <div class="product-price">฿${p.price}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function openDetail(id) {
+        activeProduct = products.find(p => p.id === id);
+        document.getElementById('detailImg').src = activeProduct.img;
+        document.getElementById('detailTitle').innerText = activeProduct.name;
+        document.getElementById('detailPrice').innerText = `฿${activeProduct.price}`;
+        document.getElementById('detailDesc').innerText = activeProduct.desc;
+        renderReviews(id);
+        navigate('detail');
+    }
+
+    // Search System
+    function handleSearch(e) {
+        const query = e.target.value.toLowerCase();
+        const filtered = products.filter(p => p.name.toLowerCase().includes(query));
+        renderProducts(filtered);
+    }
+
+    // Review System
+    function renderReviews(productId) {
+        const container = document.getElementById('reviewList');
+        const list = reviews[productId] || [];
+        if(list.length === 0) {
+            container.innerHTML = '<span style="color:var(--text-muted)">ยังไม่มีรีวิว</span>';
+            return;
+        }
+        container.innerHTML = list.map(r => `
+            <div style="margin-bottom:6px; background:#F1F5F9; padding:6px; border-radius:4px;">
+                <div>${'⭐'.repeat(r.rating)}</div>
+                <div>${r.comment}</div>
+            </div>
+        `).join('');
+    }
+
+    function addReview() {
+        if(!activeProduct) return;
+        const rating = parseInt(document.getElementById('reviewRating').value);
+        const comment = document.getElementById('reviewComment').value;
+        
+        if(!comment) return alert('กรุณากรอกความคิดเห็น');
+        
+        if(!reviews[activeProduct.id]) reviews[activeProduct.id] = [];
+        reviews[activeProduct.id].push({ rating, comment });
+        
+        document.getElementById('reviewComment').value = '';
+        renderReviews(activeProduct.id);
+    }
+
+    // Cart & Address System
+    function addToCart() {
+        if(!activeProduct) return;
+        cart.push(activeProduct);
+        alert('เพิ่มลงตะกร้าเรียบร้อยแล้ว');
+    }
+
+    function renderCart() {
+        const container = document.getElementById('cartContainer');
+        if(cart.length === 0) {
+            container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">ไม่มีสินค้าในตะกร้า</p>';
+        } else {
+            container.innerHTML = cart.map((item, idx) => `
+                <div class="card" style="display:flex; justify-style:space-between; align-items:center; margin-bottom:8px;">
+                    <div>
+                        <div style="font-size:12px; font-weight:bold;">${item.name}</div>
+                        <div style="font-size:12px; color:var(--accent);">฿${item.price}</div>
+                    </div>
+                    <button onclick="removeFromCart(${idx})" style="color:red; border:none; background:none; cursor:pointer;">✕</button>
+                </div>
+            `).join('');
+        }
+
+        const total = cart.reduce((sum, item) => sum + item.price, 0);
+        document.getElementById('cartTotal').innerText = `฿${total}`;
+
+        // Address update
+        const addrDiv = document.getElementById('selectedAddress');
+        if(selectedAddrIndex >= 0 && addresses[selectedAddrIndex]) {
+            const a = addresses[selectedAddrIndex];
+            addrDiv.innerHTML = `<strong>${a.name}</strong> (${a.phone})<br>${a.detail}`;
+        } else {
+            addrDiv.innerText = 'ยังไม่ได้เลือกที่อยู่จัดส่ง';
+        }
+    }
+
+    function removeFromCart(index) {
+        cart.splice(index, 1);
+        renderCart();
+    }
+
+    function saveAddress() {
+        const name = document.getElementById('addrName').value;
+        const phone = document.getElementById('addrPhone').value;
+        const detail = document.getElementById('addrDetail').value;
+
+        if(!name || !phone || !detail) return alert('กรุณากรอกข้อมูลให้ครบถ้วน');
+
+        addresses.push({ name, phone, detail });
+        selectedAddrIndex = addresses.length - 1;
+        
+        // Reset form
+        document.getElementById('addrName').value = '';
+        document.getElementById('addrPhone').value = '';
+        document.getElementById('addrDetail').value = '';
+
+        alert('บันทึกที่อยู่เรียบร้อยแล้ว');
+        navigate('cart');
+    }
+
+    function checkout() {
+        if(cart.length === 0) return alert('ตะกร้าสินค้าว่างเปล่า');
+        if(selectedAddrIndex < 0) return alert('กรุณาเลือก/เพิ่มที่อยู่จัดส่ง');
+
+        const newOrder = {
+            id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+            items: [...cart],
+            total: cart.reduce((sum, item) => sum + item.price, 0),
+            address: addresses[selectedAddrIndex],
+            status: 'เตรียมจัดส่ง',
+            tracking: 'TH' + Math.floor(10000000 + Math.random() * 90000000)
+        };
+
+        orders.unshift(newOrder);
+        cart = [];
+        alert('สั่งซื้อสำเร็จ! สามารถติดตามออเดอร์ได้ในเมนูออเดอร์');
+        navigate('orders');
+    }
+
+    // Order Tracking System
+    function renderOrders() {
+        const container = document.getElementById('ordersContainer');
+        if(orders.length === 0) {
+            container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">ยังไม่มีประวัติการสั่งซื้อ</p>';
+            return;
+        }
+
+        container.innerHTML = orders.map(o => `
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; font-size:12px;">
+                    <strong>${o.id}</strong>
+                    <span class="badge badge-success">${o.status}</span>
+                </div>
+                <div style="font-size:11px; color:var(--text-muted); margin:4px 0;">Tracking: ${o.tracking}</div>
+                
+                <div class="timeline">
+                    <div class="timeline-item active">รับคำสั่งซื้อเรียบร้อย</div>
+                    <div class="timeline-item ${o.status !== 'เตรียมจัดส่ง' ? 'active' : ''}">กำลังจัดเตรียมสินค้า</div>
+                    <div class="timeline-item ${o.status === 'จัดส่งแล้ว' ? 'active' : ''}">พนักงานรับสินค้าแล้ว</div>
+                </div>
+
+                <div style="font-size:12px; font-weight:bold; border-top:1px solid var(--border-color); padding-top:6px;">
+                    ยอดรวม: ฿${o.total}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Live Chat System
+    function toggleChat() {
+        const widget = document.getElementById('chatWidget');
+        widget.style.display = (widget.style.display === 'flex') ? 'none' : 'flex';
+    }
+
+    function sendChat() {
+        const input = document.getElementById('chatInput');
+        const msg = input.value.trim();
+        if(!msg) return;
+
+        const body = document.getElementById('chatBody');
+        body.innerHTML += `<div class="chat-bubble user">${msg}</div>`;
+        input.value = '';
+
+        // Auto Bot Reply
+        setTimeout(() => {
+            body.innerHTML += `<div class="chat-bubble store">เจ้าหน้าที่รับทราบข้อความแล้ว จะรีบตอบกลับโดยเร็วที่สุดครับ</div>`;
+            body.scrollTop = body.scrollHeight;
+        }, 1000);
+        body.scrollTop = body.scrollHeight;
+    }
+
+    // Admin Operations
+    function adminAddProduct() {
+        const name = document.getElementById('adminPName').value;
+        const price = parseFloat(document.getElementById('adminPPrice').value);
+        const img = document.getElementById('adminPImg').value || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300';
+
+        if(!name || !price) return alert('กรุณากรอกชื่อและราคา');
+
+        products.push({ id: Date.now(), name, price, img, desc: 'สินค้าใหม่จากร้าน STYLE KHUN' });
+        renderProducts();
+        alert('เพิ่มสินค้าเรียบร้อย');
+        
+        document.getElementById('adminPName').value = '';
+        document.getElementById('adminPPrice').value = '';
+        document.getElementById('adminPImg').value = '';
+    }
+
+    function renderAdminOrders() {
+        const container = document.getElementById('adminOrderList');
+        if(orders.length === 0) {
+            container.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">ไม่มีรายการคำสั่งซื้อ</p>';
+            return;
+        }
+
+        container.innerHTML = orders.map((o, idx) => `
+            <div style="border:1px solid var(--border-color); padding:8px; border-radius:6px; margin-bottom:8px; font-size:12px;">
+                <div><strong>${o.id}</strong> - ฿${o.total}</div>
+                <div>ผู้รับ: ${o.address.name}</div>
+                <div style="margin-top:4px;">
+                    สถานะ: 
+                    <select onchange="updateOrderStatus(${idx}, this.value)">
+                        <option value="เตรียมจัดส่ง" ${o.status==='เตรียมจัดส่ง'?'selected':''}>เตรียมจัดส่ง</option>
+                        <option value="กำลังจัดส่ง" ${o.status==='กำลังจัดส่ง'?'selected':''}>กำลังจัดส่ง</option>
+                        <option value="จัดส่งแล้ว" ${o.status==='จัดส่งแล้ว'?'selected':''}>จัดส่งแล้ว</option>
+                    </select>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function updateOrderStatus(index, newStatus) {
+        orders[index].status = newStatus;
+        alert('อัปเดตสถานะเรียบร้อยแล้ว');
+    }
+</script>
+</body>
+</html>
