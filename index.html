@@ -1128,6 +1128,41 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* Floating notification popup */
+        .app-notification-popup {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            width: min(360px, calc(100vw - 36px));
+            background: #fff;
+            border: 1px solid rgba(0,0,0,.08);
+            border-radius: 16px;
+            box-shadow: 0 14px 35px rgba(0,0,0,.18);
+            z-index: 99999;
+            padding: 13px 14px;
+            display:flex;
+            gap:11px;
+            align-items:flex-start;
+            opacity:0;
+            transform:translateY(-18px);
+            pointer-events:none;
+            transition:all .28s ease;
+        }
+        .app-notification-popup.show { opacity:1; transform:translateY(0); pointer-events:auto; }
+        .app-notification-popup-icon { width:38px;height:38px;border-radius:12px;background:#f1f4ee;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none; }
+        .app-notification-popup-body { flex:1; min-width:0; cursor:pointer; }
+        .app-notification-popup-title { font-weight:800;font-size:13px;margin-bottom:3px;color:#30342f; }
+        .app-notification-popup-message { font-size:11px;color:#687066;line-height:1.45; }
+        .app-notification-popup-close { border:0;background:transparent;font-size:18px;color:#9aa09a;cursor:pointer;padding:0 2px; }
+        .address-autocomplete-wrap { position:relative; }
+        .address-suggestions { position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #e5e8e3;border-radius:12px;box-shadow:0 10px 28px rgba(0,0,0,.12);z-index:5000;max-height:210px;overflow:auto;display:none; }
+        .address-suggestions.show { display:block; }
+        .address-suggestion-item { padding:10px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f2ef; }
+        .address-suggestion-item:last-child { border-bottom:0; }
+        .address-suggestion-item:hover { background:#f7f9f5; }
+        .address-help { font-size:10px;color:#7b8278;margin-top:4px;line-height:1.4; }
+        .address-loading { font-size:10px;color:#777;padding:9px 12px; }
+
         .modal {
             display: none;
             position: absolute;
@@ -1331,6 +1366,8 @@ body.auth-locked .app-container { display:none !important; }
 .admin-product-thumb { width:54px; height:68px; border-radius:9px; object-fit:cover; background:#f5f5f5; }
 .logout-btn { border:1px solid #ddd; background:#fff; color:#c0392b; border-radius:10px; padding:7px 11px; font-size:11px; cursor:pointer; }
 </style>
+
+<style id="stylekun-notification-history-disabled">#notificationPanel,#notificationList,.notification-panel,.notification-history{display:none!important;}</style>
 </head>
 <body class="auth-locked">
 
@@ -1355,7 +1392,10 @@ body.auth-locked .app-container { display:none !important; }
             </div>
             <div class="form-group">
                 <label class="form-label">รหัสผ่าน</label>
-                <input class="form-input" id="loginPassword" type="password" required autocomplete="current-password" placeholder="กรอกรหัสผ่าน">
+                <div style="position:relative;">
+                    <input class="form-input" id="loginPassword" type="password" required autocomplete="current-password" placeholder="กรอกรหัสผ่าน" style="padding-right:72px;">
+                    <button type="button" onclick="togglePasswordVisibility('loginPassword', this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:#F4F5F2;color:var(--primary-dark);border-radius:8px;padding:5px 8px;font-size:10px;font-weight:700;cursor:pointer;">👁️ ดูรหัสผ่าน</button>
+                </div>
             </div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin:-4px 0 12px; gap:10px;">
                 <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-muted);cursor:pointer;">
@@ -1413,13 +1453,22 @@ body.auth-locked .app-container { display:none !important; }
 
 <div class="app-container">
     <div id="toast" class="toast">เพิ่มสินค้าเรียบร้อยแล้ว</div>
+    <div id="appNotificationPopup" class="app-notification-popup" role="status" aria-live="polite">
+        <div class="app-notification-popup-icon" id="appNotificationPopupIcon">🔔</div>
+        <div class="app-notification-popup-body" id="appNotificationPopupBody" onclick="handleFloatingNotificationClick()">
+            <div class="app-notification-popup-title" id="appNotificationPopupTitle">การแจ้งเตือน</div>
+            <div class="app-notification-popup-message" id="appNotificationPopupMessage"></div>
+        </div>
+        <button class="app-notification-popup-close" onclick="hideFloatingNotification(event)" aria-label="ปิด">✕</button>
+    </div>
 
     <!-- Header -->
     <header>
         <div class="header-top">
             <button class="icon-btn" onclick="navigate('home')">☰</button>
             <div class="brand-title" onclick="navigate('home')">Styleคุณ</div>
-            <button class="icon-btn" onclick="navigate('cart')">
+            <div style="display:flex;align-items:center;gap:8px;">
+<button class="icon-btn" onclick="navigate('cart')">
                 🛒
                 <span class="cart-badge" id="cartBadge">0</span>
             </button>
@@ -1473,15 +1522,6 @@ body.auth-locked .app-container { display:none !important; }
         <div id="page-category" class="page">
             <div class="filter-section">
                 <div class="filter-chips" id="categoryFilterChips"></div>
-            </div>
-
-            <!-- Price Range Filter -->
-            <div class="price-range-box">
-                <span>ช่วงราคา:</span>
-                <input type="number" id="minPriceInput" placeholder="Min" onchange="applyPriceFilter()">
-                <span>-</span>
-                <input type="number" id="maxPriceInput" placeholder="Max" onchange="applyPriceFilter()">
-                <button class="btn-apply" style="padding:4px 8px; font-size:11px;" onclick="applyPriceFilter()">กรอง</button>
             </div>
 
             <div class="sort-bar">
@@ -1643,6 +1683,25 @@ body.auth-locked .app-container { display:none !important; }
                 <div class="admin-stat"><div class="admin-stat-icon">💰</div><div><div class="admin-stat-label">ยอดขาย</div><div class="admin-stat-value" id="dashRevenue">฿0</div><div class="admin-stat-sub">รวมคำสั่งซื้อ</div></div></div>
             </div>
 
+            <!-- Admin Dashboard Charts -->
+            <div class="admin-chart-grid">
+                <div class="admin-chart-card">
+                    <div class="admin-chart-title">📈 ยอดขายย้อนหลัง 1 เดือน</div>
+                    <div class="admin-chart-sub">คำนวณจากคำสั่งซื้อที่ไม่ถูกยกเลิก</div>
+                    <div class="admin-chart-wrap"><canvas id="adminRevenueChart"></canvas></div>
+                </div>
+                <div class="admin-chart-card">
+                    <div class="admin-chart-title">📊 สถานะคำสั่งซื้อ</div>
+                    <div class="admin-chart-sub">จำนวนออเดอร์แยกตามสถานะปัจจุบัน</div>
+                    <div class="admin-chart-wrap"><canvas id="adminStatusChart"></canvas></div>
+                </div>
+                <div class="admin-chart-card">
+                    <div class="admin-chart-title">🏆 สินค้าขายดี</div>
+                    <div class="admin-chart-sub">จัดอันดับตามจำนวนชิ้นที่สั่งซื้อ</div>
+                    <div class="admin-chart-wrap"><canvas id="adminTopProductsChart"></canvas></div>
+                </div>
+            </div>
+
             <div class="admin-panel">
                 <div class="section-header" style="margin-top:0;"><span class="section-title">🛍️ สินค้าที่มีการสั่งซื้อ</span><button class="chip" onclick="renderAdminDashboard()">↻ รีเฟรช</button></div>
                 <div id="adminOrderedProducts"></div>
@@ -1658,7 +1717,15 @@ body.auth-locked .app-container { display:none !important; }
                 <form onsubmit="adminAddProduct(event)">
                     <div class="form-group"><label class="form-label">ชื่อสินค้า</label><input class="form-input" id="adminProductName" required placeholder="เช่น เสื้อยืดคอกลมรุ่นใหม่"></div>
                     <div class="form-row"><div class="form-group"><label class="form-label">หมวดหมู่</label><select class="form-input" id="adminProductCategory" required><option value="เสื้อผู้หญิง">เสื้อผู้หญิง</option><option value="เสื้อผู้ชาย">เสื้อผู้ชาย</option><option value="เดรส">เดรส</option><option value="กางเกง">กางเกง</option><option value="กระโปรง">กระโปรง</option><option value="เสื้อคลุม">เสื้อคลุม</option><option value="รองเท้า">รองเท้า</option><option value="กระเป๋า">กระเป๋า</option><option value="เครื่องประดับ">เครื่องประดับ</option><option value="สินค้าใหม่">สินค้าใหม่</option></select></div><div class="form-group"><label class="form-label">ราคา (บาท)</label><input class="form-input" id="adminProductPrice" type="number" min="0" required placeholder="590"></div></div>
-                    <div class="form-group"><label class="form-label">ลิงก์รูปสินค้า</label><input class="form-input" id="adminProductImg" type="url" required placeholder="https://..."></div>
+                    <div class="form-group">
+                        <label class="form-label">รูปภาพสินค้า</label>
+                        <div class="image-upload-box">
+                            <input id="adminProductImgFile" type="file" accept="image/*" required onchange="previewProductImage(this,'adminProductImgPreview')">
+                            <img id="adminProductImgPreview" class="image-preview" alt="ตัวอย่างรูปสินค้า">
+                            <input type="hidden" id="adminProductImg">
+                            <div style="font-size:9px;color:var(--text-muted);margin-top:5px;">รองรับ JPG, PNG, WEBP • แนะนำไม่เกิน 2 MB</div>
+                        </div>
+                    </div>
                     <div class="form-group"><label class="form-label">รายละเอียดสินค้า</label><textarea class="form-input" id="adminProductDesc" rows="3" placeholder="รายละเอียดสินค้า"></textarea></div>
                     <div class="form-row"><div class="form-group"><label class="form-label">วัสดุ</label><input class="form-input" id="adminProductMaterial" placeholder="เช่น Cotton"></div><div class="form-group"><label class="form-label">คะแนนเริ่มต้น</label><input class="form-input" id="adminProductRating" type="number" min="0" max="5" step="0.1" value="5"></div></div>
                     <button type="submit" class="btn-checkout">บันทึกและเพิ่มสินค้า</button>
@@ -1702,6 +1769,37 @@ body.auth-locked .app-container { display:none !important; }
             <span>บัญชี</span>
         </div>
     </nav>
+</div>
+
+<!-- Edit Product Modal -->
+<div class="modal-overlay" id="editProductModal" onclick="closeEditProduct(event)" style="z-index:100002;">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <span class="modal-sheet-title">✏️ แก้ไขสินค้า</span>
+            <button class="modal-close-btn" onclick="closeEditProduct()">✕</button>
+        </div>
+        <form onsubmit="adminUpdateProduct(event)">
+            <input type="hidden" id="editProductId">
+            <div class="form-group"><label class="form-label">ชื่อสินค้า</label><input class="form-input" id="editProductName" required></div>
+            <div class="form-row">
+                <div class="form-group"><label class="form-label">หมวดหมู่</label><select class="form-input" id="editProductCategory" required>
+                    <option>เสื้อผู้หญิง</option><option>เสื้อผู้ชาย</option><option>เดรส</option><option>กางเกง</option><option>กระโปรง</option><option>เสื้อคลุม</option><option>รองเท้า</option><option>กระเป๋า</option><option>เครื่องประดับ</option><option>สินค้าใหม่</option>
+                </select></div>
+                <div class="form-group"><label class="form-label">ราคา (บาท)</label><input class="form-input" id="editProductPrice" type="number" min="0" required></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">เปลี่ยนรูปภาพ (ไม่บังคับ)</label>
+                <div class="image-upload-box">
+                    <input id="editProductImgFile" type="file" accept="image/*" onchange="previewProductImage(this,'editProductImgPreview')">
+                    <img id="editProductImgPreview" class="image-preview" alt="ตัวอย่างรูปสินค้า">
+                    <input type="hidden" id="editProductImg">
+                </div>
+            </div>
+            <div class="form-group"><label class="form-label">รายละเอียดสินค้า</label><textarea class="form-input" id="editProductDesc" rows="3"></textarea></div>
+            <div class="form-row"><div class="form-group"><label class="form-label">วัสดุ</label><input class="form-input" id="editProductMaterial"></div><div class="form-group"><label class="form-label">คะแนน</label><input class="form-input" id="editProductRating" type="number" min="0" max="5" step="0.1"></div></div>
+            <button type="submit" class="btn-checkout">บันทึกการแก้ไข</button>
+        </form>
+    </div>
 </div>
 
 <!-- Modal Size Chart -->
@@ -1806,20 +1904,43 @@ body.auth-locked .app-container { display:none !important; }
             </div>
 
             <div class="form-group">
-                <label class="form-label">รายละเอียดที่อยู่ (บ้านเลขที่, ถนน, ซอย, หมู่บ้าน)</label>
-                <input type="text" class="form-input" id="addrDetail" placeholder="เช่น 99/12 หมู่บ้านศุภาลัย ซอย 5 ถ.สุขุมวิท 71" required>
+                <label class="form-label">บ้านเลขที่ / ซอย / ถนน</label>
+                <input type="text" class="form-input" id="addrDetail" placeholder="เช่น 99/12 ซอย 5 ถนนสุขุมวิท" required>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label">แขวง/เขต & จังหวัด</label>
-                    <input type="text" class="form-input" id="addrDistrict" placeholder="เช่น แขวงพระโขนงเหนือ เขตวัฒนา กรุงเทพฯ" required>
+                    <label class="form-label">หมู่ที่</label>
+                    <input type="text" class="form-input" id="addrMoo" placeholder="เช่น 4">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">หมู่บ้าน</label>
+                    <input type="text" class="form-input" id="addrVillage" placeholder="เช่น บ้านหนอง...">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">จังหวัด</label>
+                    <input type="text" class="form-input" id="addrProvince" placeholder="พิมพ์จังหวัดเองได้ เช่น พิษณุโลก" autocomplete="address-level1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">อำเภอ / เขต</label>
+                    <input type="text" class="form-input" id="addrDistrict" placeholder="พิมพ์อำเภอ / เขตเองได้" autocomplete="address-level2" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">ตำบล / แขวง</label>
+                    <input type="text" class="form-input" id="addrSubdistrict" placeholder="พิมพ์ตำบล / แขวงเองได้" autocomplete="address-level3" required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">รหัสไปรษณีย์</label>
-                    <input type="text" class="form-input" id="addrPostcode" placeholder="เช่น 10110" required pattern="[0-9]{5}">
+                    <input type="text" class="form-input" id="addrPostcode" placeholder="พิมพ์รหัสไปรษณีย์ 5 หลัก" required pattern="[0-9]{5}" maxlength="5" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'').slice(0,5)">
                 </div>
             </div>
+            <div class="address-help">กรอกข้อมูลที่อยู่ด้วยตนเองได้ทุกช่อง ไม่บังคับเลือกจากรายการ และไม่ต้องใช้ฐานข้อมูลภายนอก</div>
 
             <div class="form-group">
                 <label class="form-label">ประเภทที่อยู่</label>
@@ -1854,6 +1975,7 @@ body.auth-locked .app-container { display:none !important; }
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Master Mock Data
 const categories = [
@@ -1908,6 +2030,40 @@ const defaultProducts = rawProducts.map(p => ({
 }));
 
 let products = JSON.parse(localStorage.getItem('stylekun_products') || 'null') || defaultProducts;
+// ===== Mock Data >= 30 =====
+// เติมข้อมูลจำลองอัตโนมัติเมื่อฐานข้อมูลสินค้ามีน้อยกว่า 30 รายการ โดยไม่ลบข้อมูลเดิมของผู้ใช้
+const mockProductNames = [
+    "เสื้อโปโลมินิมอล","เสื้อเชิ้ตโอเวอร์ไซซ์","เสื้อแขนกุดลินิน","เสื้อครอปคอตตอน","เสื้อยืดโอเวอร์ไซซ์",
+    "เดรสคอวีเรียบหรู","เดรสลินินทรงเอ","เดรสแขนพอง","กางเกงคาร์โก้มินิมอล","กางเกงขากระบอก",
+    "กางเกงยีนส์ทรงตรง","กางเกงขาสั้นคอตตอน","กระโปรงพลีทยาว","กระโปรงยีนส์มินิ","กระโปรงทรงเอ",
+    "เสื้อคลุมคาร์ดิแกน","เสื้อแจ็กเก็ตบาง","เสื้อเบลเซอร์มินิมอล","รองเท้าผ้าใบคลาสสิก","รองเท้าโลฟเฟอร์",
+    "รองเท้าแตะมินิมอล","กระเป๋าผ้าแคนวาส","กระเป๋าสะพายมินิ","กระเป๋าโท้ทเรียบหรู","กระเป๋าคาดอก",
+    "หมวกแก๊ปมินิมอล","เข็มขัดหนังเรียบ","แหวนเงินมินิมอล","ต่างหูวงกลม","สร้อยข้อมือเรียบ"
+];
+const mockProducts = mockProductNames.map((name, index) => {
+    const source = rawProducts[index % rawProducts.length];
+    const cats = ["เสื้อผู้หญิง","เสื้อผู้ชาย","เดรส","กางเกง","กระโปรง","เสื้อคลุม","รองเท้า","กระเป๋า","เครื่องประดับ"];
+    return {
+        id: `MOCK-${String(index+1).padStart(2,'0')}`,
+        name, category: cats[index % cats.length],
+        price: 290 + (index * 70 % 1100),
+        rating: Number((4.2 + (index % 8) * 0.1).toFixed(1)),
+        reviews: 12 + index * 4,
+        img: source.img,
+        colors: colorPalette,
+        sizes: sizeList,
+        description: `ข้อมูลจำลองสำหรับทดสอบระบบสินค้า: ${name} ของ Styleคุณ`,
+        material: index % 2 ? "Cotton Premium" : "Linen Blend",
+        createdBy: "mock"
+    };
+});
+if (products.length < 30) {
+    const existingIds = new Set(products.map(p => String(p.id)));
+    const needed = 30 - products.length;
+    products = products.concat(mockProducts.filter(p => !existingIds.has(String(p.id))).slice(0, needed));
+    localStorage.setItem('stylekun_products', JSON.stringify(products));
+}
+
 
 const initialAddresses = [
     {
@@ -2005,6 +2161,7 @@ let state = {
         notifications: true,
         promotions: true
     },
+    notifications: JSON.parse(localStorage.getItem('stylekun_notifications')) || [],
     selectedCategory: "ทั้งหมด",
     currentProduct: null,
     selectedColor: "ครีม",
@@ -2021,6 +2178,15 @@ let state = {
     selectedTypeTag: 'บ้าน',
     selectedPayTag: 'card'
 };
+
+state.orders.forEach(o => {
+    if (!o.carrier) o.carrier = 'Flash Express';
+    if (!o.estimatedDelivery && o.trackingNo) {
+        const d = new Date(o.date || Date.now());
+        d.setDate(d.getDate() + 3);
+        o.estimatedDelivery = d.toISOString();
+    }
+});
 
 // Assign legacy/sample orders to the demo customer so Admin can see them and the customer can see their own orders.
 state.orders.forEach(o => { if (!o.userId) o.userId = 'customer-demo'; });
@@ -2040,23 +2206,44 @@ state.orders.forEach(o => {
     }
 });
 
-// ซิงก์สถานะคำสั่งซื้อข้ามแท็บ/หน้าต่างของลูกค้าและ Admin
-window.addEventListener('storage', (event) => {
-    if (event.key !== 'stylekun_orders' || !event.newValue) return;
+// ทำให้ข้อมูลคำสั่งซื้อที่แสดงทุกหน้ามาจาก state.orders ชุดเดียวกัน
+function refreshAllOrderViews() {
     try {
-        state.orders = JSON.parse(event.newValue) || [];
         if (state.auth && state.auth.role === 'admin') {
-            renderAdminDashboard();
+            if (typeof renderAdminDashboard === 'function') renderAdminDashboard();
         } else if (state.auth && state.auth.role === 'customer') {
             const accountPage = document.getElementById('page-account');
             if (accountPage && accountPage.classList.contains('active')) {
                 const menu = accountPage.querySelector('.menu-list');
-                if (menu && (menu.querySelector('.my-orders-tabs') || menu.querySelector('.order-status-pill'))) {
+                if (menu && (menu.querySelector('.my-orders-tabs') || menu.querySelector('.order-status-pill') || menu.querySelector('.tracking-log-list'))) {
                     menu.innerHTML = renderOrdersHTML();
                 }
             }
         }
-    } catch (e) { console.error('ไม่สามารถซิงก์คำสั่งซื้อได้', e); }
+    } catch (e) { console.error('รีเฟรชมุมมองคำสั่งซื้อไม่สำเร็จ', e); }
+}
+
+// ซิงก์สถานะคำสั่งซื้อข้ามแท็บ/หน้าต่างของลูกค้าและ Admin
+window.addEventListener('storage', (event) => {
+    try {
+        if (event.key === 'stylekun_orders' && event.newValue) {
+            state.orders = JSON.parse(event.newValue) || [];
+            refreshAllOrderViews();
+        }
+        if (event.key === 'stylekun_addresses' && event.newValue) {
+            state.addresses = JSON.parse(event.newValue) || [];
+            const defAddr = state.addresses.find(a => a.isDefault) || state.addresses[0];
+            if (defAddr) state.selectedCheckoutAddressId = defAddr.id;
+            if (document.getElementById('page-cart')?.classList.contains('active')) renderCart();
+        }
+        if (event.key === 'stylekun_products' && event.newValue) {
+            products = JSON.parse(event.newValue) || products;
+            if (typeof refreshProductViews === 'function') refreshProductViews();
+        }
+        if (event.key === 'stylekun_users' && event.newValue) {
+            state.users = JSON.parse(event.newValue) || [];
+        }
+    } catch (e) { console.error('ไม่สามารถซิงก์ข้อมูลข้ามแท็บได้', e); }
 });
 
 // Initial Load
@@ -2072,9 +2259,13 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCartBadge();
     updateAccountCard();
 
+    // Keep addresses created in older versions compatible with the new structured fields.
+    state.addresses = (state.addresses || []).map(a => ({...a, moo:a.moo||'', village:a.village||'', province:a.province||'', subdistrict:a.subdistrict||'', provinceCode:a.provinceCode||'', districtCode:a.districtCode||'', subdistrictCode:a.subdistrictCode||''}));
     const defAddr = state.addresses.find(a => a.isDefault) || state.addresses[0];
     if (defAddr) state.selectedCheckoutAddressId = defAddr.id;
     applyAuthUI();
+    renderNotificationCenter();
+    // ที่อยู่เป็นการกรอกเองทั้งหมด ไม่พึ่งข้อมูลจังหวัดภายนอก
 });
 
 function saveState() {
@@ -2090,6 +2281,7 @@ function saveState() {
     localStorage.setItem('stylekun_reviews', JSON.stringify(state.reviews));
     localStorage.setItem('stylekun_profile', JSON.stringify(state.profile));
     localStorage.setItem('stylekun_settings', JSON.stringify(state.settings));
+    localStorage.setItem('stylekun_notifications', JSON.stringify(state.notifications || []));
     updateCartBadge();
 }
 
@@ -2118,6 +2310,14 @@ function setAuthMode(mode) {
     document.getElementById('registerModeBtn').classList.toggle('active', isRegister);
     document.getElementById('authSubtitle').textContent = isRegister ? 'สร้างบัญชีลูกค้าใหม่' : 'เข้าสู่ระบบเพื่อใช้งานร้านค้า';
     document.getElementById('authError').style.display = 'none';
+}
+
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const visible = input.type === 'text';
+    input.type = visible ? 'password' : 'text';
+    if (button) button.textContent = visible ? '👁️ ดูรหัสผ่าน' : '🙈 ซ่อนรหัสผ่าน';
 }
 
 function loadRememberedLogin() {
@@ -2230,15 +2430,14 @@ function handleLogin(event) {
     }
 
     const rememberEl = document.getElementById('rememberPassword');
-    if (rememberEl && rememberEl.checked) {
-        localStorage.setItem('stylekun_remember_login', JSON.stringify({
-            username: username,
-            password: password,
-            role: selectedAuthRole
-        }));
-    } else {
-        localStorage.removeItem('stylekun_remember_login');
-    }
+    // บันทึกบัญชีที่เข้าสู่ระบบสำเร็จไว้ในเครื่อง เพื่อให้สมาชิกเดิมกลับมาเข้าสู่ระบบได้ในครั้งต่อไป
+    // (เป็นระบบต้นแบบที่ใช้ localStorage; ระบบจริงควรใช้ session/token ที่ปลอดภัยแทนการเก็บรหัสผ่าน)
+    localStorage.setItem('stylekun_remember_login', JSON.stringify({
+        username: username,
+        password: password,
+        role: selectedAuthRole
+    }));
+    if (rememberEl) rememberEl.checked = true;
 
     state.auth = { id:validUser.id, role:validUser.role, username:validUser.username, loginAt:new Date().toISOString() };
     if (validUser.role === 'customer') {
@@ -2254,6 +2453,7 @@ function handleLogin(event) {
     }
     saveState();
     applyAuthUI();
+    addAppNotification('เข้าสู่ระบบ', isAdmin ? 'เข้าสู่ระบบ Admin สำเร็จ' : 'เข้าสู่ระบบลูกค้าสำเร็จ', '🔐', false, { recipientUserId: validUser.id });
     showToast(isAdmin ? 'เข้าสู่ระบบ Admin สำเร็จ' : 'เข้าสู่ระบบลูกค้าสำเร็จ');
 }
 
@@ -2280,6 +2480,11 @@ function handleRegister(event) {
     state.payments = [];
     state.cart = [];
     state.favorites = [];
+    localStorage.setItem('stylekun_remember_login', JSON.stringify({
+        username: user.username,
+        password: user.password,
+        role: 'customer'
+    }));
     saveState();
     document.getElementById('registerForm').reset();
     applyAuthUI();
@@ -2401,15 +2606,174 @@ function logout() {
 // ===== Admin Dashboard =====
 function renderAdminDashboard() {
     if (!requireAdmin()) return;
+
     const orders = state.orders || [];
-    const units = orders.reduce((sum,o) => sum + (o.items || []).reduce((s,i) => s + Number(i.qty || 0), 0), 0);
-    const revenue = orders.filter(o => o.statusStep !== 0).reduce((sum,o) => sum + Number(o.total || 0), 0);
-    const pc = document.getElementById('dashProductCount'), oc=document.getElementById('dashOrderCount'), uc=document.getElementById('dashUnitCount'), rv=document.getElementById('dashRevenue');
-    if(pc) pc.textContent=products.length.toLocaleString(); if(oc) oc.textContent=orders.length.toLocaleString(); if(uc) uc.textContent=units.toLocaleString(); if(rv) rv.textContent='฿'+revenue.toLocaleString();
+    const units = orders.reduce((sum,o) =>
+        sum + (o.items || []).reduce((s,i) => s + Number(i.qty || 0), 0), 0);
+    const revenue = orders
+        .filter(o => getOrderStatusKey(o) !== 'cancelled')
+        .reduce((sum,o) => sum + Number(o.total || 0), 0);
+
+    const pc = document.getElementById('dashProductCount');
+    const oc = document.getElementById('dashOrderCount');
+    const uc = document.getElementById('dashUnitCount');
+    const rv = document.getElementById('dashRevenue');
+
+    if(pc) pc.textContent = products.length.toLocaleString();
+    if(oc) oc.textContent = orders.length.toLocaleString();
+    if(uc) uc.textContent = units.toLocaleString();
+    if(rv) rv.textContent = '฿' + revenue.toLocaleString();
+
     renderAdminOrderedProducts(orders);
     renderAdminOrders(orders);
     renderAdminProducts();
+    renderAdminCharts(orders);
 }
+
+let adminRevenueChart = null;
+let adminStatusChart = null;
+let adminTopProductsChart = null;
+
+function destroyAdminChart(chart) {
+    if (chart) {
+        try { chart.destroy(); } catch(e) {}
+    }
+}
+
+function renderAdminCharts(orders) {
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js ยังไม่พร้อมใช้งาน');
+        return;
+    }
+
+    const validOrders = (orders || []).filter(o => getOrderStatusKey(o) !== 'cancelled');
+
+    // กราฟยอดขาย 7 วันล่าสุด
+    const days = [];
+    for(let i=29;i>=0;i--){
+        const d = new Date();
+        d.setHours(0,0,0,0);
+        d.setDate(d.getDate() - i);
+        days.push(d);
+    }
+
+    const revenueData = days.map(day => {
+        const key = day.toISOString().slice(0,10);
+        return validOrders.reduce((sum, o) => {
+            const od = new Date(o.date);
+            return od.toISOString().slice(0,10) === key ? sum + Number(o.total || 0) : sum;
+        }, 0);
+    });
+
+    const revenueLabels = days.map(d => d.toLocaleDateString('th-TH', {day:'numeric', month:'short'}));
+
+    destroyAdminChart(adminRevenueChart);
+    const revenueCanvas = document.getElementById('adminRevenueChart');
+    if (revenueCanvas) {
+        adminRevenueChart = new Chart(revenueCanvas, {
+            type: 'line',
+            data: {
+                labels: revenueLabels,
+                datasets: [{
+                    label: 'ยอดขาย (บาท)',
+                    data: revenueData,
+                    tension: 0.35,
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: value => '฿' + Number(value).toLocaleString()
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // กราฟสถานะออเดอร์
+    const statusMap = {
+        payment: 'รอชำระ',
+        preparing: 'เตรียมจัดส่ง',
+        shipping: 'ระหว่างขนส่ง',
+        review: 'รีวิว',
+        return: 'คืนสินค้า',
+        cancelled: 'ยกเลิก'
+    };
+    const statusCounts = Object.keys(statusMap).map(k =>
+        (orders || []).filter(o => getOrderStatusKey(o) === k).length
+    );
+
+    destroyAdminChart(adminStatusChart);
+    const statusCanvas = document.getElementById('adminStatusChart');
+    if (statusCanvas) {
+        adminStatusChart = new Chart(statusCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: Object.values(statusMap),
+                datasets: [{ data: statusCounts, borderWidth: 1 }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } }
+                }
+            }
+        });
+    }
+
+    // กราฟสินค้าขายดี 5 อันดับแรก
+    const productMap = {};
+    validOrders.forEach(o => {
+        (o.items || []).forEach(item => {
+            const key = String(item.id || item.name);
+            if (!productMap[key]) {
+                productMap[key] = { name: item.name || 'ไม่ระบุ', qty: 0 };
+            }
+            productMap[key].qty += Number(item.qty || 0);
+        });
+    });
+
+    const topProducts = Object.values(productMap)
+        .sort((a,b) => b.qty - a.qty)
+        .slice(0,5);
+
+    destroyAdminChart(adminTopProductsChart);
+    const topCanvas = document.getElementById('adminTopProductsChart');
+    if (topCanvas) {
+        adminTopProductsChart = new Chart(topCanvas, {
+            type: 'bar',
+            data: {
+                labels: topProducts.length ? topProducts.map(p => p.name) : ['ยังไม่มีข้อมูล'],
+                datasets: [{
+                    label: 'จำนวนชิ้น',
+                    data: topProducts.length ? topProducts.map(p => p.qty) : [0],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { beginAtZero: true, ticks: { precision: 0 } },
+                    y: { ticks: { font: { size: 9 } } }
+                }
+            }
+        });
+    }
+}
+
 function renderAdminOrderedProducts(orders) {
     const el=document.getElementById('adminOrderedProducts'); if(!el) return;
     const map={};
@@ -2447,7 +2811,11 @@ function renderAdminOrders(orders) {
             ${(o.items||[]).map(i=>`<div class="admin-order-item"><img class="admin-order-thumb" src="${escapeHTML(i.img||'')}" onerror="this.style.opacity='.3'"><div style="flex:1"><div style="font-size:11px;font-weight:700;">${escapeHTML(i.name)}</div><div style="font-size:10px;color:var(--text-muted);">${escapeHTML(i.color||'')} ${i.size?'• '+escapeHTML(i.size):''} • ${i.qty} ชิ้น</div></div><b style="font-size:11px;">฿${(Number(i.price)*Number(i.qty)).toLocaleString()}</b></div>`).join('')}
             <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid #eee;font-size:11px;"><span>${new Date(o.date).toLocaleDateString('th-TH')}</span><b>รวม ฿${Number(o.total||0).toLocaleString()}</b></div>
             <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">สถานะปัจจุบัน: <strong style="color:var(--primary-dark);">${statusText[key]}</strong></div>
-            <div style="font-size:10px;color:var(--text-muted);margin-top:4px;">เลขพัสดุ: <strong style="color:var(--primary-dark);">${o.trackingNo ? escapeHTML(o.trackingNo) : 'ยังไม่มี — จะสร้างเมื่อกดจัดส่ง'}</strong></div>
+            <div class="tracking-extra">
+                <div><b>🚚 บริษัทขนส่ง:</b> ${escapeHTML(o.carrier || 'Flash Express')}</div>
+                <div style="margin-top:3px;"><b>📦 Tracking:</b> ${o.trackingNo ? escapeHTML(o.trackingNo) : 'ยังไม่มี — จะสร้างเมื่อกดจัดส่ง'}</div>
+                <div style="margin-top:3px;"><b>📅 กำหนดส่งโดยประมาณ:</b> ${o.estimatedDelivery ? new Date(o.estimatedDelivery).toLocaleDateString('th-TH') : 'รอจัดส่ง'}</div>
+            </div>
             <div class="admin-status-actions">
                 <button class="${key==='payment'?'active':''}" onclick="adminUpdateOrderStatus('${o.id}','payment')">💳 รอชำระ</button>
                 <button class="${key==='preparing'?'active':''}" onclick="adminUpdateOrderStatus('${o.id}','preparing')">📦 เตรียมจัดส่ง</button>
@@ -2481,6 +2849,10 @@ function adminUpdateOrderStatus(orderId, newStatus) {
     if (newStatus === 'shipping' && !order.trackingNo) {
         order.trackingNo = 'TH' + Math.floor(100000000 + Math.random() * 900000000);
         order.trackingCreatedAt = now.toISOString();
+        order.carrier = order.carrier || 'Flash Express';
+        const eta = new Date(now);
+        eta.setDate(eta.getDate() + 2);
+        order.estimatedDelivery = eta.toISOString();
     }
 
     // หากย้อนกลับไป "เตรียมจัดส่ง" ให้ยังไม่มีเลขพัสดุจนกว่าจะกดจัดส่งอีกครั้ง
@@ -2499,9 +2871,14 @@ function adminUpdateOrderStatus(orderId, newStatus) {
 
     order.logs.push({time: timeStr, text: config.text + (newStatus === 'shipping' && order.trackingNo ? ` เลขพัสดุ ${order.trackingNo} โดย Admin` : ' โดย Admin')});
     saveState();
+    if (stylekunOrderChannel) {
+        try { stylekunOrderChannel.postMessage({ type:'order-updated', orderId:order.id, statusKey:newStatus, at:Date.now() }); } catch(e) {}
+    }
+    addAppNotification('อัปเดตคำสั่งซื้อ', `#${order.id} เปลี่ยนเป็น ${config.status}${order.trackingNo ? ` • Tracking ${order.trackingNo}` : ''}`, '🚚', true, { recipientUserId: order.userId, action: 'orders', targetId: order.id });
 
     // รีเฟรชหน้าปัจจุบัน และให้ฝั่งลูกค้าอ่านสถานะล่าสุดจาก localStorage
     renderAdminDashboard();
+    refreshAllOrderViews();
     if (state.auth && state.auth.role === 'customer') {
         openAccountSection('orders');
     }
@@ -2510,10 +2887,44 @@ function adminUpdateOrderStatus(orderId, newStatus) {
 }
 
 // ===== Admin Product Management =====
+function previewProductImage(input, previewId) {
+    const file = input && input.files ? input.files[0] : null;
+    const preview = document.getElementById(previewId);
+    if (!file || !preview) return;
+    if (!file.type.startsWith('image/')) {
+        showToast('กรุณาเลือกไฟล์รูปภาพเท่านั้น');
+        input.value = '';
+        return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+        showToast('รูปภาพต้องมีขนาดไม่เกิน 2 MB');
+        input.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        const hiddenId = previewId === 'adminProductImgPreview' ? 'adminProductImg' : 'editProductImg';
+        const hidden = document.getElementById(hiddenId);
+        if (hidden) hidden.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function refreshProductViews() {
+    renderHomeCategories();
+    renderBestSellers();
+    renderFlashSale();
+    renderCategoryFilterChips();
+    renderCategoryPage();
+    renderAdminDashboard();
+    updateCartBadge();
+}
+
 function adminAddProduct(event) {
     event.preventDefault();
     if (!requireAdmin()) return;
-
     const name = document.getElementById('adminProductName').value.trim();
     const category = document.getElementById('adminProductCategory').value;
     const price = Number(document.getElementById('adminProductPrice').value);
@@ -2522,35 +2933,91 @@ function adminAddProduct(event) {
     const material = document.getElementById('adminProductMaterial').value.trim() || 'ไม่ระบุ';
     const rating = Number(document.getElementById('adminProductRating').value || 5);
 
-    if (!name || !category || !price || price < 0 || !img) {
-        showToast('กรุณากรอกข้อมูลสินค้าให้ครบถ้วน');
+    if (!name || !category || price < 0 || !img) {
+        showToast('กรุณากรอกข้อมูลสินค้าและเลือกรูปภาพให้ครบถ้วน');
         return;
     }
-
     const newProduct = {
-        id: 'ADM-' + Date.now(),
-        name, category, price,
-        rating: Math.min(5, Math.max(0, rating)),
-        reviews: 0,
-        img,
-        colors: colorPalette,
-        sizes: sizeList,
-        description,
-        material,
-        createdBy: 'admin'
+        id: 'ADM-' + Date.now(), name, category, price,
+        rating: Math.min(5, Math.max(0, rating)), reviews: 0, img,
+        colors: colorPalette, sizes: sizeList, description, material,
+        createdBy: 'admin', createdAt: new Date().toISOString()
     };
-
     products.unshift(newProduct);
     saveState();
-    renderHomeCategories();
-    renderBestSellers();
-    renderFlashSale();
-    renderCategoryFilterChips();
-    renderCategoryPage();
-    renderAdminDashboard();
+    refreshProductViews();
     event.target.reset();
     document.getElementById('adminProductRating').value = 5;
+    document.getElementById('adminProductImg').value = '';
+    document.getElementById('adminProductImgPreview').style.display = 'none';
+    addAppNotification('สินค้าใหม่มาแล้ว 🛍️', `แอดมินเพิ่มสินค้า "${name}" สามารถกดเพื่อดูรายละเอียดและสั่งซื้อได้`, '🛍️', true, { recipientRole: 'customer', action: 'product', targetId: newProduct.id });
     showToast('Admin เพิ่มสินค้าเรียบร้อยแล้ว');
+}
+
+function openEditProduct(productId) {
+    if (!requireAdmin()) return;
+    const p = products.find(x => String(x.id) === String(productId));
+    if (!p) return;
+    document.getElementById('editProductId').value = p.id;
+    document.getElementById('editProductName').value = p.name || '';
+    document.getElementById('editProductCategory').value = p.category || 'สินค้าใหม่';
+    document.getElementById('editProductPrice').value = p.price ?? 0;
+    document.getElementById('editProductDesc').value = p.description || '';
+    document.getElementById('editProductMaterial').value = p.material || '';
+    document.getElementById('editProductRating').value = p.rating ?? 5;
+    document.getElementById('editProductImg').value = p.img || '';
+    const preview = document.getElementById('editProductImgPreview');
+    preview.src = p.img || '';
+    preview.style.display = p.img ? 'block' : 'none';
+    document.getElementById('editProductImgFile').value = '';
+    document.getElementById('editProductModal').classList.add('active');
+}
+
+function closeEditProduct(event) {
+    if (event && event.target && event.target.id !== 'editProductModal') return;
+    document.getElementById('editProductModal').classList.remove('active');
+}
+
+function adminUpdateProduct(event) {
+    event.preventDefault();
+    if (!requireAdmin()) return;
+    const id = document.getElementById('editProductId').value;
+    const p = products.find(x => String(x.id) === String(id));
+    if (!p) return;
+    const name = document.getElementById('editProductName').value.trim();
+    const category = document.getElementById('editProductCategory').value;
+    const price = Number(document.getElementById('editProductPrice').value);
+    const img = document.getElementById('editProductImg').value.trim();
+    if (!name || !category || price < 0 || !img) {
+        showToast('กรุณากรอกข้อมูลที่จำเป็นให้ครบ');
+        return;
+    }
+    Object.assign(p, {
+        name, category, price, img,
+        description: document.getElementById('editProductDesc').value.trim() || `สินค้า ${name} จาก Styleคุณ`,
+        material: document.getElementById('editProductMaterial').value.trim() || 'ไม่ระบุ',
+        rating: Math.min(5, Math.max(0, Number(document.getElementById('editProductRating').value || 5))),
+        updatedAt: new Date().toISOString()
+    });
+    saveState();
+    refreshProductViews();
+    closeEditProduct();
+    addAppNotification('สินค้าอัปเดตแล้ว', `สินค้า "${name}" มีการอัปเดตรายละเอียดจากแอดมิน`, '✏️', true, { recipientRole: 'customer', action: 'product', targetId: p.id });
+    showToast('แก้ไขสินค้าเรียบร้อยแล้ว');
+}
+
+function adminDeleteProduct(productId) {
+    if (!requireAdmin()) return;
+    const p = products.find(x => String(x.id) === String(productId));
+    if (!p) return;
+    if (!confirm(`ต้องการลบสินค้า "${p.name}" ใช่หรือไม่?`)) return;
+    products = products.filter(x => String(x.id) !== String(productId));
+    state.cart = state.cart.filter(x => String(x.id) !== String(productId));
+    state.favorites = state.favorites.filter(x => String(x.id) !== String(productId));
+    saveState();
+    refreshProductViews();
+    addAppNotification('ลบสินค้า', `ลบ "${p.name}" ออกจากระบบแล้ว`, '🗑️', true);
+    showToast('ลบสินค้าเรียบร้อยแล้ว');
 }
 
 function renderAdminProducts() {
@@ -2563,12 +3030,56 @@ function renderAdminProducts() {
             <img class="admin-product-thumb" src="${escapeHTML(p.img)}" alt="${escapeHTML(p.name)}" onerror="this.style.opacity='.35'">
             <div style="flex:1;min-width:0;">
                 <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHTML(p.name)}</div>
-                <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${escapeHTML(p.category)} • ฿${Number(p.price).toLocaleString()}</div>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${escapeHTML(p.category)} • ฿${Number(p.price).toLocaleString()} • ⭐${Number(p.rating||0).toFixed(1)}</div>
                 ${p.createdBy === 'admin' ? '<span class="admin-badge" style="margin-top:5px;">เพิ่มโดย Admin</span>' : ''}
+                ${p.createdBy === 'mock' ? '<span class="admin-badge" style="margin-top:5px;background:#edf2f7;">Mock Data</span>' : ''}
+                <div class="crud-actions">
+                    <button class="crud-btn edit" onclick="openEditProduct('${String(p.id).replace(/'/g,"\\'")}')">✏️ แก้ไข</button>
+                    <button class="crud-btn delete" onclick="adminDeleteProduct('${String(p.id).replace(/'/g,"\\'")}')">🗑️ ลบ</button>
+                </div>
             </div>
         </div>
     `).join('');
 }
+
+// ===== Real-time Order / Sales Sync =====
+// ใช้ BroadcastChannel สำหรับแท็บเดียวกัน/หลายแท็บ และ polling เป็น fallback
+// เพื่อให้ Dashboard ยอดขายอ่าน state.orders ล่าสุดโดยไม่ต้องกดรีเฟรชหน้า
+const stylekunOrderChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('stylekun_orders_realtime') : null;
+
+function syncOrdersRealtime() {
+    try {
+        const raw = localStorage.getItem('stylekun_orders');
+        if (!raw) return;
+        const latestOrders = JSON.parse(raw);
+        if (!Array.isArray(latestOrders)) return;
+
+        const oldSignature = JSON.stringify((state.orders || []).map(o => ({
+            id:o.id, total:o.total, statusKey:o.statusKey, statusStep:o.statusStep,
+            paymentStatus:o.paymentStatus, returnRequested:o.returnRequested
+        })));
+        const newSignature = JSON.stringify(latestOrders.map(o => ({
+            id:o.id, total:o.total, statusKey:o.statusKey, statusStep:o.statusStep,
+            paymentStatus:o.paymentStatus, returnRequested:o.returnRequested
+        })));
+
+        if (oldSignature !== newSignature) {
+            state.orders = latestOrders;
+            refreshAllOrderViews();
+        }
+    } catch (e) {
+        console.warn('ไม่สามารถซิงก์ยอดขายแบบเรียลไทม์ได้', e);
+    }
+}
+
+if (stylekunOrderChannel) {
+    stylekunOrderChannel.addEventListener('message', () => syncOrdersRealtime());
+}
+
+// ตรวจสอบข้อมูลล่าสุดเป็นระยะ เพื่อรองรับการเปลี่ยนแปลงที่เกิดจากระบบอื่นในเบราว์เซอร์
+setInterval(() => {
+    if (state.auth && state.auth.role === 'admin') syncOrdersRealtime();
+}, 1000);
 
 // ซิงก์คำสั่งซื้อระหว่าง Admin และฝั่งลูกค้าเมื่อข้อมูลใน localStorage ถูกเปลี่ยน
 window.addEventListener('storage', (event) => {
@@ -2631,7 +3142,7 @@ function renderFlashSale() {
     const container = document.getElementById('flashSaleContainer');
     const flashItems = products.slice(0, 5);
     container.innerHTML = flashItems.map(p => `
-        <div class="flash-item" onclick="openDetail(${p.id})">
+        <div class="flash-item" onclick="openDetail(${JSON.stringify(p.id)})">
             <img class="flash-img" src="${p.img}" alt="${p.name}">
             <div class="flash-info">
                 <div class="flash-price">฿${Math.round(p.price * 0.7)}</div>
@@ -2674,7 +3185,7 @@ function renderRecentlyViewed() {
     section.style.display = 'block';
     const recentProds = state.recentlyViewed.map(id => products.find(p => p.id === id)).filter(Boolean);
     container.innerHTML = recentProds.map(p => `
-        <div class="cat-item" onclick="openDetail(${p.id})">
+        <div class="cat-item" onclick="openDetail(${JSON.stringify(p.id)})">
             <img class="cat-icon" src="${p.img}" style="object-fit:cover;">
             <div class="cat-name">${p.name}</div>
         </div>
@@ -2760,7 +3271,7 @@ function renderCategoryPage() {
 function createProductCard(product) {
     const isFav = state.favorites.includes(product.id);
     return `
-        <div class="product-card" onclick="openDetail(${product.id})">
+        <div class="product-card" onclick="openDetail(${JSON.stringify(product.id)})">
             <div class="card-img-wrap">
                 <img class="card-img" src="${product.img}" alt="${product.name}" loading="lazy">
                 <button class="fav-btn ${isFav ? 'active' : ''}" onclick="event.stopPropagation(); toggleFavorite(${product.id})">
@@ -2768,7 +3279,7 @@ function createProductCard(product) {
                 </button>
             </div>
             <div class="card-info">
-                <div class="product-name">${product.name}</div>
+                <div class="product-name">${escapeHTML(product.name)}</div><div style="font-size:9px;color:var(--primary-dark);margin-top:3px;">${product.createdBy === 'admin' ? '🆕 เพิ่มโดย Admin' : ''}</div>
                 <div class="product-price">฿${product.price.toLocaleString()}</div>
                 <div class="product-rating">
                     ★ <span>${product.rating}</span>
@@ -3147,7 +3658,15 @@ function checkout() {
         address: {
             name: selAddr.name,
             phone: selAddr.phone,
-            address: `${selAddr.detail} ${selAddr.district} ${selAddr.postcode} (${selAddr.label})`
+            detail: selAddr.detail || '',
+            moo: selAddr.moo || '',
+            village: selAddr.village || '',
+            subdistrict: selAddr.subdistrict || '',
+            district: selAddr.district || '',
+            province: selAddr.province || '',
+            postcode: selAddr.postcode || '',
+            label: selAddr.label || '',
+            address: `${selAddr.detail}${selAddr.moo ? ` หมู่ ${selAddr.moo}` : ''}${selAddr.village ? ` ${selAddr.village}` : ''} ${selAddr.subdistrict || ''} ${selAddr.district || ''} ${selAddr.province || ''} ${selAddr.postcode} (${selAddr.label})`
         },
         payment: payment ? JSON.parse(JSON.stringify(payment)) : null,
         logs: [
@@ -3156,9 +3675,16 @@ function checkout() {
     };
 
     state.orders.unshift(order);
+    // แจ้ง Dashboard/Admin ทันทีเมื่อมีคำสั่งซื้อใหม่
+    if (stylekunOrderChannel) {
+        try { stylekunOrderChannel.postMessage({ type:'new-order', orderId:order.id, total:Number(order.total || 0), at:Date.now() }); } catch(e) {}
+    }
+    addAppNotification('มีคำสั่งซื้อใหม่ 🛒', `ลูกค้า ${order.customerName || 'สมาชิก'} สั่งซื้อ #${order.id} ยอด ฿${Number(order.total || 0).toLocaleString()} — กรุณาตรวจสอบในหน้าจัดการคำสั่งซื้อ`, '🛒', true, { recipientRole: 'admin', action: 'orders', targetId: order.id });
+    addAppNotification('สั่งซื้อสำเร็จ', `คำสั่งซื้อ #${order.id} ส่งถึงร้านค้าแล้ว คุณสามารถติดตามสถานะได้ที่คำสั่งซื้อของฉัน`, '✅', false, { recipientUserId: order.userId, action: 'orders', targetId: order.id });
     state.cart = [];
     state.discount = 0;
     saveState();
+    refreshAllOrderViews();
     if (state.auth && state.auth.role === 'admin') renderAdminDashboard();
 
     showToast('สั่งซื้อสำเร็จ! ขอบคุณที่เลือกช้อปกับ Styleคุณ');
@@ -3275,16 +3801,35 @@ function saveProfileForm(e) {
 }
 
 function renderAccountMenu() {
+    state.orderFilter = 'all';
     const content = document.querySelector("#page-account .menu-list");
     if (!content) return;
-    const customerOrders = state.auth && state.auth.role === 'customer' ? state.orders.filter(o => o.userId === state.auth.id) : [];
+    const customerOrders = state.auth && state.auth.role === 'customer'
+        ? state.orders.filter(o => o.userId === state.auth.id)
+        : [];
+
+    // ใช้ตัวแปลงสถานะเดียวกับหน้า "รายการสั่งซื้อของฉัน"
+    // เพื่อให้ตัวเลขบนหน้า Account และรายการหลังจากกดเข้าไปตรงกันทุกสถานะ
+    const statusKey = typeof getOrderStatusKey === 'function'
+        ? getOrderStatusKey
+        : (o => {
+            if (!o) return 'preparing';
+            if (o.statusKey && ['payment','preparing','shipping','review','return','cancelled'].includes(o.statusKey)) return o.statusKey;
+            if (o.statusStep === 0) return 'cancelled';
+            if (o.returnRequested) return 'return';
+            if (o.paymentStatus === 'unpaid') return 'payment';
+            if (o.statusStep === 1) return 'preparing';
+            if (o.statusStep === 2) return 'shipping';
+            return 'review';
+        });
+
     const counts = {
-        payment: customerOrders.filter(o => o.paymentStatus === 'unpaid').length,
-        preparing: customerOrders.filter(o => o.paymentStatus !== 'unpaid' && o.statusStep === 1 && !o.returnRequested).length,
-        shipping: customerOrders.filter(o => o.statusStep === 2 && !o.returnRequested).length,
-        review: customerOrders.filter(o => o.statusStep === 3 && !o.returnRequested && o.status !== 'ยกเลิก').length,
-        return: customerOrders.filter(o => o.returnRequested || o.status === 'การคืนสินค้า').length,
-        cancelled: customerOrders.filter(o => o.statusStep === 0).length
+        payment: customerOrders.filter(o => statusKey(o) === 'payment').length,
+        preparing: customerOrders.filter(o => statusKey(o) === 'preparing').length,
+        shipping: customerOrders.filter(o => statusKey(o) === 'shipping').length,
+        review: customerOrders.filter(o => statusKey(o) === 'review').length,
+        return: customerOrders.filter(o => statusKey(o) === 'return').length,
+        cancelled: customerOrders.filter(o => statusKey(o) === 'cancelled').length
     };
     const total = Object.values(counts).reduce((a,b)=>a+b,0);
     content.innerHTML = `
@@ -3359,7 +3904,7 @@ function renderAddressesHTML() {
                 </div>
                 <div style="font-size:11px; color:var(--text-muted); line-height:1.6; margin-bottom:10px;">
                     📞 ${escapeHTML(a.phone)}<br>
-                    🏠 ${escapeHTML(a.detail)} ${escapeHTML(a.district)} ${escapeHTML(a.postcode)}
+                    🏠 ${escapeHTML(a.detail)}${a.moo ? ` หมู่ ${escapeHTML(a.moo)}` : ""}${a.village ? ` ${escapeHTML(a.village)}` : ""} ${escapeHTML(a.subdistrict || "")} ${escapeHTML(a.district || "")} ${escapeHTML(a.province || "")} ${escapeHTML(a.postcode || "")}
                 </div>
                 <div style="display:flex; gap:8px; border-top:1px dashed #EEE; padding-top:8px;">
                     ${!a.isDefault ? `<button class="chip" style="font-size:11px; padding:4px 10px;" onclick="setDefaultAddress('${a.id}')">ตั้งเป็นหลัก</button>` : ''}
@@ -3371,7 +3916,7 @@ function renderAddressesHTML() {
     `;
 }
 
-function openAddressModal(editId = null) {
+async function openAddressModal(editId = null) {
     const modal = document.getElementById('addressModal');
     const title = document.getElementById('addressModalTitle');
     const form = document.getElementById('addressForm');
@@ -3387,16 +3932,27 @@ function openAddressModal(editId = null) {
             document.getElementById('addrEditId').value = addr.id;
             document.getElementById('addrName').value = addr.name;
             document.getElementById('addrPhone').value = addr.phone;
-            document.getElementById('addrDetail').value = addr.detail;
-            document.getElementById('addrDistrict').value = addr.district;
-            document.getElementById('addrPostcode').value = addr.postcode;
+            document.getElementById('addrDetail').value = addr.detail || '';
+            document.getElementById('addrMoo').value = addr.moo || '';
+            document.getElementById('addrVillage').value = addr.village || '';
+            document.getElementById('addrProvince').value = addr.province || '';
+            document.getElementById('addrDistrict').disabled = false;
+            document.getElementById('addrSubdistrict').disabled = false;
+            document.getElementById('addrDistrict').value = addr.district || '';
+            document.getElementById('addrSubdistrict').value = addr.subdistrict || '';
+            document.getElementById('addrPostcode').value = addr.postcode || '';
             document.getElementById('addrIsDefault').checked = addr.isDefault;
+            if (addr.provinceCode) await loadThaiDistricts(addr.provinceCode, false);
+            if (addr.districtCode) await loadThaiSubdistricts(addr.districtCode, false);
             selectAddressTypeTag(addr.label || "บ้าน");
         }
     } else {
         title.innerText = "เพิ่มที่อยู่จัดส่งใหม่";
         document.getElementById('addrIsDefault').checked = state.addresses.length === 0;
+        resetThaiAddressFields();
     }
+
+    await initThaiAddressData();
 
     modal.classList.add('active');
 }
@@ -3413,61 +3969,194 @@ function selectAddressTypeTag(tagLabel) {
     document.getElementById('tagCondo').classList.toggle('selected', tagLabel === 'หอพัก/คอนโด');
 }
 
-function saveAddressForm(event) {
-    event.preventDefault();
 
+// ===== Thailand Address Autocomplete (robust offline-cache + API fallback) =====
+const THAI_GEO_API = 'https://geoth.thiti.dev/api';
+let thaiAddressData = { provinces: [], districts: {}, subdistricts: {}, allDistricts: [], allSubdistricts: [] };
+let thaiAddressReady = false;
+
+async function fetchThaiJSON(url) {
+    const r = await fetch(url, { method:'GET', cache:'force-cache' });
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    return r.json();
+}
+function unwrapThai(raw) {
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw?.result?.data)) return raw.result.data;
+    if (Array.isArray(raw?.result)) return raw.result;
+    if (Array.isArray(raw?.provinces)) return raw.provinces;
+    return [];
+}
+function normalizeThaiList(raw) { return unwrapThai(raw); }
+function geoId(x) { return x?.id ?? x?.code ?? x?.provinceCode ?? x?.districtCode ?? x?.subdistrictCode ?? x?.province_id ?? x?.district_id ?? x?.subdistrict_id; }
+function geoProvinceId(x) { return x?.provinceCode ?? x?.province_code ?? x?.province_id ?? x?.provinceId ?? x?.province?.code ?? x?.province?.id; }
+function geoDistrictId(x) { return x?.districtCode ?? x?.district_code ?? x?.district_id ?? x?.districtId ?? x?.district?.code ?? x?.district?.id; }
+function geoName(x) { return x?.name_th || x?.provinceNameTh || x?.districtNameTh || x?.subdistrictNameTh || x?.province_name_th || x?.district_name_th || x?.subdistrict_name_th || x?.name?.th || x?.th || x?.name || ''; }
+function geoPostal(x) { return String(x?.postalCode ?? x?.postal_code ?? x?.postcode ?? x?.postCode ?? x?.zip_code ?? x?.zipcode ?? x?.zip ?? ''); }
+function cleanThaiName(v) { return String(v||'').replace(/^(จังหวัด|จ\.?|อำเภอ|เขต|ตำบล|แขวง)\s*/,'').trim().toLowerCase(); }
+function matchesThai(item,q) {
+    const a=cleanThaiName(geoName(item)), b=String(q||'').trim().toLowerCase();
+    return !b || a.includes(b) || a.replace(/จังหวัด|อำเภอ|เขต|ตำบล|แขวง/g,'').includes(b);
+}
+
+async function initThaiAddressData() {
+    if (thaiAddressReady && thaiAddressData.provinces.length) return true;
+    try {
+        // Ignore old broken cache format; only accept cache containing usable records.
+        const cached = JSON.parse(localStorage.getItem('stylekun_thai_geo_cache_v2') || 'null');
+        if (cached?.provinces?.length && cached?.allDistricts?.length && cached?.allSubdistricts?.length) {
+            thaiAddressData = cached;
+            thaiAddressReady = true;
+            return true;
+        }
+    } catch(e) {}
+    try {
+        const [pr, di, su] = await Promise.all([
+            fetchThaiJSON(THAI_GEO_API+'/provinces/all'),
+            fetchThaiJSON(THAI_GEO_API+'/districts/all'),
+            fetchThaiJSON(THAI_GEO_API+'/subdistricts/all')
+        ]);
+        const provinces=normalizeThaiList(pr), districts=normalizeThaiList(di), subdistricts=normalizeThaiList(su);
+        if (!provinces.length || !districts.length || !subdistricts.length) throw new Error('ฐานข้อมูลที่อยู่ไม่ครบ');
+        thaiAddressData={provinces,districts:{},subdistricts:{},allDistricts:districts,allSubdistricts:subdistricts};
+        for (const d of districts) {
+            const pc=String(geoProvinceId(d)||'');
+            if(pc) (thaiAddressData.districts[pc] ||= []).push(d);
+        }
+        for (const sd of subdistricts) {
+            const dc=String(geoDistrictId(sd)||'');
+            if(dc) (thaiAddressData.subdistricts[dc] ||= []).push(sd);
+        }
+        thaiAddressReady=true;
+        try { localStorage.setItem('stylekun_thai_geo_cache_v2',JSON.stringify({...thaiAddressData,cachedAt:Date.now()})); } catch(e) {}
+        return true;
+    } catch(e) {
+        console.warn('โหลดฐานข้อมูลที่อยู่ไทยไม่สำเร็จ',e);
+        showToast('ไม่สามารถโหลดข้อมูลที่อยู่ไทยได้ กรุณาเปิดอินเทอร์เน็ตแล้วลองใหม่');
+        return false;
+    }
+}
+
+function resetThaiAddressFields() {
+    ['addrProvince','addrDistrict','addrSubdistrict'].forEach(id=>{const el=document.getElementById(id);if(el){el.value='';el.dataset.code='';}});
+    const d=document.getElementById('addrDistrict'),sd=document.getElementById('addrSubdistrict');
+    if(d){d.disabled=false;d.placeholder='พิมพ์อำเภอ / เขตได้เลย';}
+    if(sd){sd.disabled=false;sd.placeholder='พิมพ์ตำบล / แขวงได้เลย';}
+    const pc=document.getElementById('addrPostcode');if(pc)pc.value='';
+    ['Province','District','Subdistrict'].forEach(k=>{const x=document.getElementById('addr'+k+'Suggestions');if(x)x.classList.remove('show');});
+}
+
+async function searchThaiAddress(level) {
+    const ids={province:'addrProvince',district:'addrDistrict',subdistrict:'addrSubdistrict'};
+    const boxIds={province:'addrProvinceSuggestions',district:'addrDistrictSuggestions',subdistrict:'addrSubdistrictSuggestions'};
+    const input=document.getElementById(ids[level]),box=document.getElementById(boxIds[level]);
+    if(!input||!box)return;
+    const ok=await initThaiAddressData();
+    if(!ok){box.innerHTML='<div class="address-loading">โหลดฐานข้อมูลไม่สำเร็จ</div>';box.classList.add('show');return;}
+    let list=[];
+    if(level==='province') list=thaiAddressData.provinces;
+    if(level==='district') list=thaiAddressData.districts[String(document.getElementById('addrProvince').dataset.code)]||[];
+    if(level==='subdistrict') list=thaiAddressData.subdistricts[String(document.getElementById('addrDistrict').dataset.code)]||[];
+    const q=input.value.trim();
+    // Show all choices when focused/empty, and filter when typing.
+    const matches=list.filter(x=>matchesThai(x,q)).slice(0,30);
+    box.innerHTML=matches.length?matches.map(x=>{
+        const id=String(geoId(x)).replace(/'/g,"\\'");
+        const nm=escapeHTML(geoName(x));
+        const zip=level==='subdistrict'&&geoPostal(x)?` <span style="color:#899086">(${escapeHTML(geoPostal(x))})</span>`:'';
+        return `<div class="address-suggestion-item" onclick="selectThaiAddress('${level}','${id}')">${nm}${zip}</div>`;
+    }).join(''):'<div class="address-loading">ไม่พบข้อมูลที่ตรงกัน</div>';
+    box.classList.add('show');
+}
+
+function findById(list,id){return (list||[]).find(x=>String(geoId(x))===String(id));}
+
+async function selectThaiAddress(level,id) {
+    try {
+        if(!await initThaiAddressData())return;
+        const inputId=level==='province'?'addrProvince':level==='district'?'addrDistrict':'addrSubdistrict';
+        const input=document.getElementById(inputId);let item=null;
+        if(level==='province'){
+            item=findById(thaiAddressData.provinces,id);if(!item)return;
+            input.value=geoName(item);input.dataset.code=geoId(item);
+            const d=document.getElementById('addrDistrict'),sd=document.getElementById('addrSubdistrict');
+            d.disabled=false;d.value='';d.dataset.code='';d.placeholder='พิมพ์หรือเลือกอำเภอ/เขต';
+            sd.disabled=false;sd.value='';sd.dataset.code='';sd.placeholder='พิมพ์ตำบล / แขวงได้เลย';
+            document.getElementById('addrPostcode').value='';
+        } else if(level==='district'){
+            const pc=String(document.getElementById('addrProvince').dataset.code||'');
+            item=findById(thaiAddressData.districts[pc],id);if(!item)return;
+            input.value=geoName(item);input.dataset.code=geoId(item);
+            const sd=document.getElementById('addrSubdistrict');sd.disabled=false;sd.value='';sd.dataset.code='';sd.placeholder='พิมพ์หรือเลือกตำบล/แขวง';
+            document.getElementById('addrPostcode').value='';
+        } else {
+            const dc=String(document.getElementById('addrDistrict').dataset.code||'');
+            item=findById(thaiAddressData.subdistricts[dc],id);if(!item)return;
+            input.value=geoName(item);input.dataset.code=geoId(item);
+            document.getElementById('addrPostcode').value=geoPostal(item);
+        }
+        document.querySelectorAll('.address-suggestions').forEach(x=>x.classList.remove('show'));
+    }catch(e){console.error(e);showToast('ไม่สามารถเลือกข้อมูลที่อยู่ได้');}
+}
+
+async function loadThaiDistricts(provinceCode){
+    await initThaiAddressData();return thaiAddressData.districts[String(provinceCode)]||[];
+}
+async function loadThaiSubdistricts(districtCode){
+    await initThaiAddressData();return thaiAddressData.subdistricts[String(districtCode)]||[];
+}
+async function lookupPostalCode(code){
+    if(!/^\d{5}$/.test(code))return;
+    await initThaiAddressData();
+    const list=thaiAddressData.allSubdistricts||[];
+    const m=list.find(x=>geoPostal(x)===code);
+    if(m){
+        const p=findById(thaiAddressData.provinces,geoProvinceId(m));
+        const d=findById(thaiAddressData.districts[String(geoProvinceId(m))],geoDistrictId(m));
+        if(p&&d){
+            document.getElementById('addrProvince').value=geoName(p);document.getElementById('addrProvince').dataset.code=geoId(p);
+            document.getElementById('addrDistrict').value=geoName(d);document.getElementById('addrDistrict').dataset.code=geoId(d);
+            document.getElementById('addrSubdistrict').value=geoName(m);document.getElementById('addrSubdistrict').dataset.code=geoId(m);
+        }
+    }
+}
+
+async function saveAddressForm(event) {
+    event.preventDefault();
     const editId = document.getElementById('addrEditId').value;
     const name = document.getElementById('addrName').value.trim();
     const phone = document.getElementById('addrPhone').value.trim();
-    if (!/^[0-9]{10}$/.test(phone)) {
-        showToast('เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น');
-        return;
-    }
+    if (!/^[0-9]{10}$/.test(phone)) { showToast('เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักเท่านั้น'); return; }
     const detail = document.getElementById('addrDetail').value.trim();
+    const moo = document.getElementById('addrMoo').value.trim();
+    const village = document.getElementById('addrVillage').value.trim();
+    const province = document.getElementById('addrProvince').value.trim();
     const district = document.getElementById('addrDistrict').value.trim();
+    const subdistrict = document.getElementById('addrSubdistrict').value.trim();
     const postcode = document.getElementById('addrPostcode').value.trim();
     const isDefault = document.getElementById('addrIsDefault').checked;
-
-    if (isDefault) {
-        state.addresses.forEach(a => a.isDefault = false);
+    // กรอกที่อยู่เองได้ทุกช่อง ไม่บังคับเลือกจากรายการหรือรหัสพื้นที่
+    const provinceCode = document.getElementById('addrProvince').dataset.code || '';
+    const districtCode = document.getElementById('addrDistrict').dataset.code || '';
+    const subdistrictCode = document.getElementById('addrSubdistrict').dataset.code || '';
+    if (!province || !district || !subdistrict || !/^[0-9]{5}$/.test(postcode)) {
+        showToast('กรุณากรอก จังหวัด อำเภอ/เขต ตำบล/แขวง และรหัสไปรษณีย์ให้ครบถ้วน'); return;
     }
-
+    if (isDefault) state.addresses.forEach(a => a.isDefault = false);
+    const data = { name, phone, detail, moo, village, province, provinceCode, district, districtCode, subdistrict, subdistrictCode, postcode, label: state.selectedTypeTag };
     if (editId) {
         const addr = state.addresses.find(a => a.id === editId);
-        if (addr) {
-            addr.name = name;
-            addr.phone = phone;
-            addr.detail = detail;
-            addr.district = district;
-            addr.postcode = postcode;
-            addr.label = state.selectedTypeTag;
-            addr.isDefault = isDefault;
-        }
-        showToast("แก้ไขข้อมูลที่อยู่เรียบร้อยแล้ว");
+        if (addr) Object.assign(addr, data, { isDefault });
+        showToast('แก้ไขข้อมูลที่อยู่เรียบร้อยแล้ว');
     } else {
-        const newAddr = {
-            id: "ADDR-" + Date.now().toString().slice(-6),
-            name,
-            phone,
-            detail,
-            district,
-            postcode,
-            label: state.selectedTypeTag,
-            isDefault: isDefault || state.addresses.length === 0
-        };
+        const newAddr = { id:'ADDR-'+Date.now().toString().slice(-6), ...data, isDefault:isDefault || state.addresses.length===0 };
         state.addresses.unshift(newAddr);
         state.selectedCheckoutAddressId = newAddr.id;
-        showToast("บันทึกที่อยู่ใหม่เรียบร้อยแล้ว");
+        showToast('บันทึกที่อยู่ใหม่เรียบร้อยแล้ว');
     }
-
-    saveState();
-    closeAddressModal();
-
-    if (document.getElementById('page-cart').classList.contains('active')) {
-        renderCart();
-    } else {
-        openAccountSection('addresses');
-    }
+    saveState(); closeAddressModal();
+    if (document.getElementById('page-cart').classList.contains('active')) renderCart(); else openAccountSection('addresses');
 }
 
 function setDefaultAddress(id) {
@@ -3654,6 +4343,11 @@ function showOrderDetail(orderId) {
             <div style="font-size:11px; color:var(--text-main);">
                 เลขพัสดุ: ${order.trackingNo ? `<strong>${escapeHTML(order.trackingNo)}</strong> <span style="color:var(--primary-dark); cursor:pointer; font-weight:bold; margin-left:6px;" onclick="copyTracking('${escapeHTML(order.trackingNo)}')">คัดลอก</span>` : `<span style="color:var(--text-muted);">ยังไม่มีเลขพัสดุ (ร้านค้ายังไม่ได้จัดส่ง)</span>`}
             </div>
+            <div class="tracking-extra" style="margin-top:10px;">
+                <div><b>🚚 บริษัทขนส่ง:</b> ${escapeHTML(order.carrier || 'Flash Express')}</div>
+                <div style="margin-top:3px;"><b>📅 กำหนดส่งโดยประมาณ:</b> ${order.estimatedDelivery ? new Date(order.estimatedDelivery).toLocaleDateString('th-TH') : 'รอจัดส่ง'}</div>
+                <div style="margin-top:3px;"><b>📍 สถานะโลจิสติกส์:</b> ${escapeHTML(order.status || 'รอดำเนินการ')}</div>
+            </div>
 
             <div style="font-size:12px; font-weight:700; margin-top:12px; border-top:1px solid rgba(0,0,0,0.06); padding-top:8px;">
                 📍 ประวัติการเดินทางพัสดุ:
@@ -3698,6 +4392,7 @@ function showOrderDetail(orderId) {
             <div style="color:var(--text-muted); line-height:1.5;">
                 ${escapeHTML(order.address.name)} (${escapeHTML(order.address.phone)})<br>
                 ${escapeHTML(order.address.address)}
+                ${order.address.province || order.address.district || order.address.subdistrict ? `<br>${escapeHTML([order.address.subdistrict, order.address.district, order.address.province, order.address.postcode].filter(Boolean).join(' '))}` : ''}
             </div>
         </div>
     `;
@@ -3773,7 +4468,129 @@ function copyTracking(trackingNo) {
     showToast(`คัดลอกเลข Tracking: ${trackingNo} แล้ว!`);
 }
 
+// ===== Real Notification System =====
+function addAppNotification(title, message, icon='🔔', pushBrowser=false, options={}) {
+    if (!state.notifications) state.notifications = [];
+    const item = {
+        id: 'NT-' + Date.now() + '-' + Math.random().toString(36).slice(2,7),
+        title, message, icon,
+        time: new Date().toISOString(),
+        read: false,
+        recipientUserId: options.recipientUserId || null,
+        recipientRole: options.recipientRole || null,
+        action: options.action || null,
+        targetId: options.targetId || null
+    };
+    state.notifications.unshift(item);
+    state.notifications = state.notifications.slice(0, 100);
+    saveState();
+    renderNotificationCenter();
+    if (notificationBelongsToCurrentUser(item)) showFloatingNotification(title, message, icon, item);
+    if (pushBrowser && state.settings?.notifications !== false) sendBrowserNotification(title, message);
+}
+
+function notificationBelongsToCurrentUser(n) {
+    // แจ้งเตือนรุ่นเก่าที่ไม่มีผู้รับ ให้ยังแสดงเพื่อไม่ให้ข้อมูลเดิมหาย
+    if (!n.recipientUserId && !n.recipientRole) return true;
+    if (!state.auth) return false;
+    if (n.recipientUserId && String(n.recipientUserId) === String(state.auth.id)) return true;
+    if (n.recipientRole && n.recipientRole === state.auth.role) return true;
+    return false;
+}
+
+function sendBrowserNotification(title, body) {
+    try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(`Styleคุณ • ${title}`, { body, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="14" fill="%2365735D"/><text x="32" y="42" text-anchor="middle" font-size="32">S</text></svg>' });
+        }
+    } catch(e) {}
+}
+
+async function requestBrowserNotification() {
+    if (!('Notification' in window)) {
+        showToast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือนระบบ');
+        return;
+    }
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+            sendBrowserNotification('เปิดใช้งานแล้ว', 'Styleคุณจะส่งการแจ้งเตือนสถานะสำคัญให้คุณ');
+            showToast('เปิดแจ้งเตือนระบบแล้ว 🔔');
+        } else {
+            showToast('ยังไม่ได้อนุญาตการแจ้งเตือน');
+        }
+    } catch(e) {
+        showToast('ไม่สามารถเปิดการแจ้งเตือนได้');
+    }
+}
+
+
+let floatingNotificationTarget = null;
+let floatingNotificationTimer = null;
+function showFloatingNotification(title, message, icon='🔔', item=null) {
+    const popup=document.getElementById('appNotificationPopup');
+    if(!popup) return;
+    document.getElementById('appNotificationPopupTitle').textContent=title;
+    document.getElementById('appNotificationPopupMessage').textContent=message;
+    document.getElementById('appNotificationPopupIcon').textContent=icon;
+    floatingNotificationTarget=item;
+    popup.classList.add('show');
+    clearTimeout(floatingNotificationTimer);
+    floatingNotificationTimer=setTimeout(()=>hideFloatingNotification(),4500);
+}
+function hideFloatingNotification(e){ if(e)e.stopPropagation(); const p=document.getElementById('appNotificationPopup'); if(p)p.classList.remove('show'); clearTimeout(floatingNotificationTimer); }
+function handleFloatingNotificationClick(){
+    if(!floatingNotificationTarget)return;
+    const id=floatingNotificationTarget.id;
+    hideFloatingNotification();
+    handleNotificationClick(id);
+}
+
+function renderNotificationCenter() { return; }
+
+function handleNotificationClick(id) {
+    const n = (state.notifications || []).find(x => x.id === id);
+    if (!n) return;
+    n.read = true;
+    saveState();
+    renderNotificationCenter();
+    const panel = document.getElementById('notificationPanel');
+    if (panel) panel.classList.remove('active');
+
+    if (n.action === 'product' && n.targetId !== null && n.targetId !== undefined) {
+        openDetail(n.targetId);
+    } else if (n.action === 'orders') {
+        if (state.auth && state.auth.role === 'admin') renderAdminDashboard();
+        else openAccountSection('orders');
+    }
+}
+
+function toggleNotificationPanel(event) { return; }
+
+function markNotificationRead(id) {
+    const n = (state.notifications || []).find(x => x.id === id);
+    if (n) n.read = true;
+    saveState();
+    renderNotificationCenter();
+}
+
+function markAllNotificationsRead() {
+    (state.notifications || []).forEach(n => n.read = true);
+    saveState();
+    renderNotificationCenter();
+    showToast('อ่านการแจ้งเตือนทั้งหมดแล้ว');
+}
+
+document.addEventListener('click', e => {
+    const panel = document.getElementById('notificationPanel');
+    const btn = document.getElementById('notificationBtn');
+    if (panel && panel.classList.contains('active') && !panel.contains(e.target) && !btn?.contains(e.target)) {
+        panel.classList.remove('active');
+    }
+});
+
 // Settings System
+
 function renderSettingsHTML() {
     return `
         <div style="margin-bottom:15px;">
@@ -3861,6 +4678,33 @@ function escapeHTML(value) {
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
 }
+
+window.addEventListener('resize', () => {
+    if (state.auth && state.auth.role === 'admin') {
+        [adminRevenueChart, adminStatusChart, adminTopProductsChart].forEach(c => {
+            if (c) c.resize();
+        });
+    }
+});
+
+</script>
+
+<script>
+(function(){
+    function enableFreeTextDistrictSubdistrict(){
+        ['addrDistrict','addrSubdistrict'].forEach(function(id){
+            var el=document.getElementById(id);
+            if(!el) return;
+            el.disabled=false;
+            el.readOnly=false;
+            if(id==='addrDistrict') el.placeholder='พิมพ์อำเภอ / เขตได้เลย';
+            if(id==='addrSubdistrict') el.placeholder='พิมพ์ตำบล / แขวงได้เลย';
+        });
+    }
+    document.addEventListener('DOMContentLoaded', enableFreeTextDistrictSubdistrict);
+    setTimeout(enableFreeTextDistrictSubdistrict,300);
+    setTimeout(enableFreeTextDistrictSubdistrict,1000);
+})();
 </script>
 </body>
 </html>
